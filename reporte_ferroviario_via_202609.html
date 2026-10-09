@@ -1,0 +1,827 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Ferroviario de Vía</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --bg-card-hover: #212d45;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3498db;
+            --accent-red: #e74c3c;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --border-color: #2d3a4f;
+            --gradient-1: linear-gradient(135deg, #3498db 0%, #e74c3c 100%);
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .header-meta span { display: flex; align-items: center; gap: 0.5rem; }
+
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .info-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+        .info-card .label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .info-card .value { font-size: 1.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .info-card.blue .value { color: #3498db; }
+        .info-card.red .value { color: #e74c3c; }
+        .info-card.green .value { color: #10b981; }
+        .info-card.amber .value { color: #f59e0b; }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .kpi-card {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 1.25rem;
+            text-align: center;
+            border-left: 4px solid #3498db;
+        }
+
+        .kpi-card.novedad { border-left-color: #3498db; }
+        .kpi-card.clausura { border-left-color: #e74c3c; }
+
+        .kpi-card .kpi-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; }
+        .kpi-card .kpi-value { font-size: 1.4rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text-primary); }
+        .kpi-card .kpi-percent { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.875rem 1rem; text-align: left; }
+        th { background: var(--bg-secondary); color: var(--text-secondary); font-weight: 500; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+        tr { border-bottom: 1px solid var(--border-color); }
+        tr:hover { background: var(--bg-card-hover); }
+
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+
+        .chart-container { position: relative; height: 350px; width: 100%; }
+        .chart-container-lg { position: relative; height: 400px; width: 100%; }
+
+        .estado-cerrado { color: #10b981; }
+        .estado-abierto { color: #ef4444; }
+        .estado-seguimiento { color: #f59e0b; }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .chart-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+
+        .chart-controls select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        .chart-controls select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .filter-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .subsection-divider {
+            border-top: 1px solid var(--border-color);
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+        }
+
+        .subsection-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            cursor: pointer;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover { border-color: var(--accent-blue); }
+        .checkbox-item input { cursor: pointer; width: 14px; height: 14px; }
+        .checkbox-item label { cursor: pointer; font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; }
+        .checkbox-item .color-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .header-content { flex-direction: column; text-align: center; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .chart-controls { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🛤️ Reporte Ferroviario de Vía</h1>
+            <div class="header-meta">
+                <span>📅 Período: 30/08/2025 - 30/09/2026</span>
+                <span>🕐 Generado: 09/10/2026 13:05</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- KPIs Generales -->
+        <div class="info-cards">
+            <div class="info-card blue">
+                <div class="label">Total Boletines Vía</div>
+                <div class="value">1,100</div>
+            </div>
+            <div class="info-card amber">
+                <div class="label">Tiempo Prom. Cierre</div>
+                <div class="value">5.0 días</div>
+            </div>
+            <div class="info-card blue">
+                <div class="label">Novedad de Vía</div>
+                <div class="value">732</div>
+            </div>
+            <div class="info-card red">
+                <div class="label">Clausura de Vía</div>
+                <div class="value">368</div>
+            </div>
+        </div>
+
+        <!-- KPIs por Tipo -->
+        <div class="section">
+            <h2 class="section-title">📊 Distribución por Tipo de Boletín</h2>
+            <div class="kpi-grid">
+                <div class="kpi-card novedad">
+                    <div class="kpi-title">Novedad de Vía</div>
+                    <div class="kpi-value">732</div>
+                    <div class="kpi-percent">66.5%</div>
+                </div>
+                <div class="kpi-card clausura">
+                    <div class="kpi-title">Clausura de Vía</div>
+                    <div class="kpi-value">368</div>
+                    <div class="kpi-percent">33.5%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tablas Estado y Línea -->
+        <div class="grid-2">
+            <div class="section">
+                <h2 class="section-title">📋 Estado de Boletines</h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Estado</th><th>Cantidad</th><th>Porcentaje</th></tr></thead>
+                        <tbody>
+                            
+                            <tr>
+                                <td><span class="estado-cerrado">Cerrado</span></td>
+                                <td>902</td>
+                                <td>82.0%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="estado-abierto">Abierto</span></td>
+                                <td>174</td>
+                                <td>15.8%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td><span class="estado-seguimiento">Seguimiento</span></td>
+                                <td>24</td>
+                                <td>2.2%</td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">🚂 Distribución por Línea</h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Línea</th><th>Cantidad</th><th>Porcentaje</th></tr></thead>
+                        <tbody>
+                            
+                            <tr>
+                                <td>Belgrano</td>
+                                <td>473</td>
+                                <td>43.0%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td>San Martin</td>
+                                <td>382</td>
+                                <td>34.7%</td>
+                            </tr>
+                            
+                            <tr>
+                                <td>Urquiza</td>
+                                <td>245</td>
+                                <td>22.3%</td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico Tendencia por Tipo -->
+        <div class="section">
+            <h2 class="section-title">📈 Tendencia Mensual por Tipo</h2>
+            
+            <div class="chart-controls">
+                <div>
+                    <span class="filter-label">Línea: </span>
+                    <select id="lineaTendenciaSelect" onchange="actualizarGraficoTendencia()">
+                        <option value="Todas">Todas las Líneas</option>
+                        <option value="Belgrano">Belgrano</option><option value="San Martin">San Martin</option><option value="Urquiza">Urquiza</option>
+                    </select>
+                </div>
+                
+                <div class="checkbox-group">
+                    <span class="filter-label">Mostrar: </span>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="chk_total" checked onchange="toggleSerie('Total')">
+                        <span class="color-dot" style="background: #ffffff;"></span>
+                        <label for="chk_total">Total</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="chk_novedad" checked onchange="toggleSerie('Novedad de vía')">
+                        <span class="color-dot" style="background: #3498db;"></span>
+                        <label for="chk_novedad">Novedad</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="chk_clausura" checked onchange="toggleSerie('Clausura de vía')">
+                        <span class="color-dot" style="background: #e74c3c;"></span>
+                        <label for="chk_clausura">Clausura</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="tendenciaChart"></canvas>
+            </div>
+
+            <div class="subsection-divider">
+                <h3 class="subsection-title">🕐 Boletines por Turno de Trabajo</h3>
+                <div class="chart-container">
+                    <canvas id="turnoChartTendencia"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico UP -->
+        <div class="section">
+            <h2 class="section-title">🏢 Distribución por Unidad de Producción (UP)</h2>
+            
+            <div class="chart-controls">
+                <div>
+                    <span class="filter-label">Línea: </span>
+                    <select id="lineaUpSelect" onchange="actualizarGraficoUp()">
+                        <option value="Todas">Todas las Líneas</option>
+                        <option value="Belgrano">Belgrano</option><option value="San Martin">San Martin</option><option value="Urquiza">Urquiza</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="chart-container-lg">
+                <canvas id="upChart"></canvas>
+            </div>
+
+            <div class="subsection-divider">
+                <h3 class="subsection-title">🕐 UP por Turno de Trabajo</h3>
+                <div class="chart-container-lg">
+                    <canvas id="turnoChartUP"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla Tipo por Línea -->
+        <div class="section">
+            <h2 class="section-title">📊 Tipo de Boletín por Línea</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Línea</th>
+                            <th>Novedad de Vía</th>
+                            <th>Clausura de Vía</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td>Belgrano</td>
+                            <td>287</td>
+                            <td>186</td>
+                            <td><strong>473</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>San Martin</td>
+                            <td>292</td>
+                            <td>90</td>
+                            <td><strong>382</strong></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>Urquiza</td>
+                            <td>153</td>
+                            <td>92</td>
+                            <td><strong>245</strong></td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráfico Estado por Mes -->
+        <div class="section">
+            <h2 class="section-title">📊 Estado de Boletines por Mes</h2>
+            
+            <div class="chart-controls">
+                <div>
+                    <span class="filter-label">Línea: </span>
+                    <select id="lineaEstadoSelect" onchange="actualizarGraficoEstado()">
+                        <option value="Todas">Todas las Líneas</option>
+                        <option value="Belgrano">Belgrano</option><option value="San Martin">San Martin</option><option value="Urquiza">Urquiza</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="chart-container-lg">
+                <canvas id="estadoChart"></canvas>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>Reporte Ferroviario de Vía | Generado por carlos amaro | camaro@bcyl.com.ar</p>
+        </footer>
+    </div>
+
+    <script>
+        // ==================== DATOS ====================
+        const datosTendencia = {"Todas": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "tipos": {"Novedad de v\u00eda": [4, 37, 64, 78, 92, 76, 62, 59, 47, 40, 40, 40, 39, 54], "Clausura de v\u00eda": [7, 13, 33, 50, 52, 54, 40, 37, 19, 8, 11, 8, 18, 18]}, "total": [11, 50, 97, 128, 144, 130, 102, 96, 66, 48, 51, 48, 57, 72]}, "Belgrano": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "tipos": {"Novedad de v\u00eda": [1, 12, 26, 29, 38, 27, 20, 23, 18, 20, 20, 21, 11, 21], "Clausura de v\u00eda": [4, 2, 18, 33, 41, 34, 22, 10, 3, 3, 0, 0, 5, 11]}, "total": [5, 14, 44, 62, 79, 61, 42, 33, 21, 23, 20, 21, 16, 32]}, "San Martin": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "tipos": {"Novedad de v\u00eda": [3, 16, 28, 25, 35, 33, 30, 21, 18, 16, 16, 14, 20, 17], "Clausura de v\u00eda": [3, 6, 5, 12, 4, 11, 11, 16, 10, 0, 3, 4, 2, 3]}, "total": [6, 22, 33, 37, 39, 44, 41, 37, 28, 16, 19, 18, 22, 20]}, "Urquiza": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "tipos": {"Novedad de v\u00eda": [0, 9, 10, 24, 19, 16, 12, 15, 11, 4, 4, 5, 8, 16], "Clausura de v\u00eda": [0, 5, 10, 5, 7, 9, 7, 11, 6, 5, 8, 4, 11, 4]}, "total": [0, 14, 20, 29, 26, 25, 19, 26, 17, 9, 12, 9, 19, 20]}};
+        const coloresVia = {"Novedad de v\u00eda": "#3498db", "Clausura de v\u00eda": "#e74c3c"};
+        const ordenTipos = ["Novedad de v\u00eda", "Clausura de v\u00eda"];
+        const datosTurnoMensual = {"Todas": {"Ma\u00f1ana": {"Novedad de v\u00eda": [1, 19, 16, 24, 39, 22, 25, 23, 20, 23, 13, 15, 8, 13], "Clausura de v\u00eda": [1, 4, 24, 40, 43, 30, 25, 19, 9, 0, 4, 3, 6, 8]}, "Tarde": {"Novedad de v\u00eda": [2, 13, 33, 42, 37, 38, 22, 25, 17, 12, 18, 19, 21, 27], "Clausura de v\u00eda": [5, 5, 7, 6, 5, 14, 10, 13, 7, 6, 5, 4, 8, 6]}, "Noche": {"Novedad de v\u00eda": [1, 5, 15, 12, 16, 16, 15, 11, 10, 5, 9, 6, 10, 14], "Clausura de v\u00eda": [1, 4, 2, 4, 4, 10, 5, 5, 3, 2, 2, 1, 4, 4]}}, "Belgrano": {"Ma\u00f1ana": {"Novedad de v\u00eda": [0, 5, 8, 8, 17, 8, 10, 10, 5, 9, 5, 9, 1, 6], "Clausura de v\u00eda": [0, 1, 17, 31, 39, 25, 19, 8, 2, 0, 0, 0, 1, 6]}, "Tarde": {"Novedad de v\u00eda": [1, 5, 9, 15, 12, 12, 5, 10, 6, 7, 9, 9, 8, 9], "Clausura de v\u00eda": [4, 1, 1, 1, 1, 4, 2, 1, 0, 3, 0, 0, 2, 3]}, "Noche": {"Novedad de v\u00eda": [0, 2, 9, 6, 9, 7, 5, 3, 7, 4, 6, 3, 2, 6], "Clausura de v\u00eda": [0, 0, 0, 1, 1, 5, 1, 1, 1, 0, 0, 0, 2, 2]}}, "San Martin": {"Ma\u00f1ana": {"Novedad de v\u00eda": [1, 6, 6, 11, 11, 5, 9, 8, 11, 11, 8, 4, 4, 5], "Clausura de v\u00eda": [1, 1, 2, 7, 1, 3, 3, 5, 6, 0, 2, 2, 0, 1]}, "Tarde": {"Novedad de v\u00eda": [1, 7, 16, 10, 19, 21, 16, 9, 4, 4, 6, 7, 10, 8], "Clausura de v\u00eda": [1, 2, 1, 2, 1, 3, 4, 10, 2, 0, 1, 1, 2, 2]}, "Noche": {"Novedad de v\u00eda": [1, 3, 6, 4, 5, 7, 5, 4, 3, 1, 2, 3, 6, 4], "Clausura de v\u00eda": [1, 3, 2, 3, 2, 5, 4, 1, 2, 0, 0, 1, 0, 0]}}, "Urquiza": {"Ma\u00f1ana": {"Novedad de v\u00eda": [0, 8, 2, 5, 11, 9, 6, 5, 4, 3, 0, 2, 3, 2], "Clausura de v\u00eda": [0, 2, 5, 2, 3, 2, 3, 6, 1, 0, 2, 1, 5, 1]}, "Tarde": {"Novedad de v\u00eda": [0, 1, 8, 17, 6, 5, 1, 6, 7, 1, 3, 3, 3, 10], "Clausura de v\u00eda": [0, 2, 5, 3, 3, 7, 4, 2, 5, 3, 4, 3, 4, 1]}, "Noche": {"Novedad de v\u00eda": [0, 0, 0, 2, 2, 2, 5, 4, 0, 0, 1, 0, 2, 4], "Clausura de v\u00eda": [0, 1, 0, 0, 1, 0, 0, 3, 0, 2, 2, 0, 2, 2]}}};
+        const coloresTurnos = {"Ma\u00f1ana": "#f59e0b", "Tarde": "#06b6d4", "Noche": "#8b5cf6"};
+        const ordenTurnos = ["Ma\u00f1ana", "Tarde", "Noche"];
+        const datosUp = {"Todas": {"ups": ["UP Puerto", "UP Meso Norte", "UP C\u00f3rdoba", "UP Santa Fe", "UP Meso Sur", "UP Este", "UP Salta", "UP Rosario", "UP Tucum\u00e1n", "UP Centro", "UP Oeste", "UP Alianza"], "cantidades": [204, 144, 129, 124, 101, 89, 88, 69, 62, 59, 29, 1], "porcentajes": [18.55, 13.09, 11.73, 11.27, 9.18, 8.09, 8.0, 6.27, 5.64, 5.36, 2.64, 0.09]}, "Belgrano": {"ups": ["UP C\u00f3rdoba", "UP Santa Fe", "UP Salta", "UP Rosario", "UP Tucum\u00e1n", "UP Retiro"], "cantidades": [129, 124, 88, 69, 62, 1], "porcentajes": [27.27, 26.22, 18.6, 14.59, 13.11, 0.21]}, "San Martin": {"ups": ["UP Puerto", "UP Este", "UP Centro", "UP Oeste", "UP Alianza"], "cantidades": [204, 89, 59, 29, 1], "porcentajes": [53.4, 23.3, 15.45, 7.59, 0.26]}, "Urquiza": {"ups": ["UP Meso Norte", "UP Meso Sur"], "cantidades": [144, 101], "porcentajes": [58.78, 41.22]}};
+        const datosUpTurno = {"Todas": {"ups": ["UP Puerto", "UP Meso Norte", "UP C\u00f3rdoba", "UP Santa Fe", "UP Meso Sur", "UP Este", "UP Salta", "UP Rosario", "UP Tucum\u00e1n", "UP Centro", "UP Oeste", "UP Alianza"], "turnos": {"Ma\u00f1ana": [73, 50, 93, 34, 43, 33, 61, 32, 29, 21, 6, 1], "Tarde": [98, 71, 20, 59, 46, 36, 18, 25, 18, 27, 9, 0], "Noche": [33, 23, 16, 31, 12, 20, 9, 12, 15, 11, 14, 0]}}, "Belgrano": {"ups": ["UP C\u00f3rdoba", "UP Santa Fe", "UP Salta", "UP Rosario", "UP Tucum\u00e1n", "UP Retiro"], "turnos": {"Ma\u00f1ana": [93, 34, 61, 32, 29, 1], "Tarde": [20, 59, 18, 25, 18, 0], "Noche": [16, 31, 9, 12, 15, 0]}}, "San Martin": {"ups": ["UP Puerto", "UP Este", "UP Centro", "UP Oeste", "UP Alianza"], "turnos": {"Ma\u00f1ana": [73, 33, 21, 6, 1], "Tarde": [98, 36, 27, 9, 0], "Noche": [33, 20, 11, 14, 0]}}, "Urquiza": {"ups": ["UP Meso Norte", "UP Meso Sur"], "turnos": {"Ma\u00f1ana": [50, 43], "Tarde": [71, 46], "Noche": [23, 12]}}};
+        const datosEstado = {"Todas": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "estados": {"Abierto": [0, 6, 15, 8, 19, 21, 18, 16, 7, 10, 11, 12, 13, 18], "Seguimiento": [0, 1, 2, 1, 3, 1, 3, 2, 2, 2, 3, 0, 1, 3], "Cerrado": [11, 43, 80, 119, 122, 108, 81, 78, 57, 36, 37, 36, 43, 51]}, "pct_cierre": [100.0, 86.0, 82.47, 92.97, 84.72, 83.08, 79.41, 81.25, 86.36, 75.0, 72.55, 75.0, 75.44, 70.83]}, "Belgrano": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "estados": {"Abierto": [0, 6, 15, 8, 19, 20, 18, 14, 6, 9, 10, 10, 13, 16], "Seguimiento": [0, 1, 2, 1, 3, 1, 3, 2, 2, 2, 2, 0, 1, 1], "Cerrado": [5, 7, 27, 53, 57, 40, 21, 17, 13, 12, 8, 11, 2, 15]}, "pct_cierre": [100.0, 50.0, 61.36, 85.48, 72.15, 65.57, 50.0, 51.52, 61.9, 52.17, 40.0, 52.38, 12.5, 46.88]}, "San Martin": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "estados": {"Abierto": [0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 1, 0, 1], "Seguimiento": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], "Cerrado": [6, 22, 33, 37, 39, 44, 41, 35, 27, 16, 19, 17, 22, 18]}, "pct_cierre": [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 94.59, 96.43, 100.0, 100.0, 94.44, 100.0, 90.0]}, "Urquiza": {"meses": ["2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "estados": {"Abierto": [0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1], "Seguimiento": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1], "Cerrado": [0, 14, 20, 29, 26, 24, 19, 26, 17, 8, 10, 8, 19, 18]}, "pct_cierre": [0.0, 100.0, 100.0, 100.0, 100.0, 96.0, 100.0, 100.0, 100.0, 88.89, 83.33, 88.89, 100.0, 90.0]}};
+        const coloresEstados = {"Abierto": "#ef4444", "Seguimiento": "#f59e0b", "Cerrado": "#10b981"};
+        const ordenEstados = ['Abierto', 'Seguimiento', 'Cerrado'];
+        
+        // ==================== GRÁFICO TENDENCIA ====================
+        let seriesVisibles = { 'Total': true, 'Novedad de vía': true, 'Clausura de vía': true };
+        let chartTendencia = null;
+        
+        function crearGraficoTendencia() {
+            const ctx = document.getElementById('tendenciaChart').getContext('2d');
+            const lineaSeleccionada = document.getElementById('lineaTendenciaSelect').value;
+            const datos = datosTendencia[lineaSeleccionada];
+            
+            const datasets = [
+                {
+                    label: 'Total',
+                    data: datos.total,
+                    borderColor: '#ffffff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#0a0f1c',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    hidden: !seriesVisibles['Total']
+                },
+                {
+                    label: 'Novedad de vía',
+                    data: datos.tipos['Novedad de vía'],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#3498db',
+                    pointRadius: 4,
+                    hidden: !seriesVisibles['Novedad de vía']
+                },
+                {
+                    label: 'Clausura de vía',
+                    data: datos.tipos['Clausura de vía'],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#e74c3c',
+                    pointRadius: 4,
+                    hidden: !seriesVisibles['Clausura de vía']
+                }
+            ];
+            
+            if (chartTendencia) chartTendencia.destroy();
+            
+            chartTendencia = new Chart(ctx, {
+                type: 'line',
+                data: { labels: datos.meses, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#2d3a4f',
+                            borderWidth: 1,
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxRotation: 45 } }
+                    }
+                }
+            });
+        }
+        
+        function actualizarGraficoTendencia() { crearGraficoTendencia(); crearGraficoTurnoMensual(); }
+        function toggleSerie(serie) { seriesVisibles[serie] = !seriesVisibles[serie]; crearGraficoTendencia(); crearGraficoTurnoMensual(); }
+        
+        // ==================== GRÁFICO DE TENDENCIA POR TURNO ====================
+        let chartTurnoMensual = null;
+
+        function crearGraficoTurnoMensual() {
+            const ctx = document.getElementById('turnoChartTendencia').getContext('2d');
+            const lineaSeleccionada = document.getElementById('lineaTendenciaSelect').value;
+            const meses = datosTendencia[lineaSeleccionada].meses;
+            const datosTurno = datosTurnoMensual[lineaSeleccionada];
+
+            const datasets = ordenTurnos.map(turno => {
+                const valores = meses.map((mes, idx) => {
+                    let suma = 0;
+                    ordenTipos.forEach(tipo => {
+                        if (seriesVisibles[tipo]) {
+                            suma += datosTurno[turno][tipo][idx];
+                        }
+                    });
+                    return suma;
+                });
+                return {
+                    label: turno,
+                    data: valores,
+                    backgroundColor: coloresTurnos[turno] + 'CC',
+                    borderColor: coloresTurnos[turno],
+                    borderWidth: 1,
+                    borderRadius: 4
+                };
+            });
+
+            if (chartTurnoMensual) chartTurnoMensual.destroy();
+
+            chartTurnoMensual = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: meses, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { color: '#94a3b8' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#2d3a4f',
+                            borderWidth: 1,
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Cantidad', color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxRotation: 45 } }
+                    }
+                }
+            });
+        }
+        
+        // ==================== GRÁFICO UP ====================
+        let chartUp = null;
+        
+        function crearGraficoUp() {
+            const ctx = document.getElementById('upChart').getContext('2d');
+            const lineaSeleccionada = document.getElementById('lineaUpSelect').value;
+            const datos = datosUp[lineaSeleccionada];
+            
+            if (chartUp) chartUp.destroy();
+            
+            chartUp = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: datos.ups,
+                    datasets: [
+                        {
+                            label: 'Cantidad',
+                            data: datos.cantidades,
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: '#3498db',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Porcentaje',
+                            data: datos.porcentajes,
+                            type: 'line',
+                            borderColor: '#e74c3c',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.3,
+                            pointBackgroundColor: '#e74c3c',
+                            pointRadius: 5,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { color: '#94a3b8' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    if (ctx.dataset.label === 'Porcentaje') return ctx.dataset.label + ': ' + ctx.parsed.x.toFixed(1) + '%';
+                                    return ctx.dataset.label + ': ' + ctx.parsed.x.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#94a3b8' } },
+                        x1: { position: 'top', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { color: '#e74c3c', callback: v => v + '%' } },
+                        y: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+        
+        function actualizarGraficoUp() { crearGraficoUp(); crearGraficoUpTurno(); }
+        
+        // ==================== GRÁFICO UP POR TURNO ====================
+        let chartUpTurno = null;
+
+        function crearGraficoUpTurno() {
+            const ctx = document.getElementById('turnoChartUP').getContext('2d');
+            const lineaSeleccionada = document.getElementById('lineaUpSelect').value;
+            const datos = datosUpTurno[lineaSeleccionada];
+
+            const datasets = ordenTurnos.map(turno => ({
+                label: turno,
+                data: datos.turnos[turno],
+                backgroundColor: coloresTurnos[turno] + 'CC',
+                borderColor: coloresTurnos[turno],
+                borderWidth: 1,
+                borderRadius: 4
+            }));
+
+            if (chartUpTurno) chartUpTurno.destroy();
+
+            chartUpTurno = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: datos.ups, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { color: '#94a3b8' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#2d3a4f',
+                            borderWidth: 1,
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Cantidad', color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxRotation: 45 } }
+                    }
+                }
+            });
+        }
+        
+        // ==================== GRÁFICO ESTADO ====================
+        let chartEstado = null;
+        
+        function crearGraficoEstado() {
+            const ctx = document.getElementById('estadoChart').getContext('2d');
+            const lineaSeleccionada = document.getElementById('lineaEstadoSelect').value;
+            const datos = datosEstado[lineaSeleccionada];
+            
+            if (chartEstado) chartEstado.destroy();
+            
+            const datasets = ordenEstados.map(estado => ({
+                label: estado,
+                data: datos.estados[estado],
+                backgroundColor: coloresEstados[estado] + 'CC',
+                borderColor: coloresEstados[estado],
+                borderWidth: 1,
+                borderRadius: 4,
+                yAxisID: 'y'
+            }));
+            
+            datasets.push({
+                label: '% Cierre',
+                data: datos.pct_cierre,
+                type: 'line',
+                borderColor: '#8b5cf6',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.3,
+                pointBackgroundColor: '#8b5cf6',
+                pointRadius: 5,
+                yAxisID: 'y1'
+            });
+            
+            chartEstado = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: datos.meses, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { color: '#94a3b8' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    if (ctx.dataset.label === '% Cierre') return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%';
+                                    return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, stacked: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Cantidad', color: '#94a3b8' } },
+                        y1: { position: 'right', beginAtZero: true, max: 100, grid: { drawOnChartArea: false }, ticks: { color: '#8b5cf6', callback: v => v + '%' }, title: { display: true, text: '% Cierre', color: '#8b5cf6' } },
+                        x: { stacked: true, grid: { display: false }, ticks: { color: '#94a3b8', maxRotation: 45 } }
+                    }
+                }
+            });
+        }
+        
+        function actualizarGraficoEstado() { crearGraficoEstado(); }
+        
+        // ==================== INICIALIZAR ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            crearGraficoTendencia();
+            crearGraficoUp();
+            crearGraficoEstado();
+            crearGraficoTurnoMensual();
+            crearGraficoUpTurno();
+        });
+    </script>
+</body>
+</html>
